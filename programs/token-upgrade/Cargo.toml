@@ -1,12 +1,12 @@
 [package]
-name = "token-update"
+name = "token-upgrade"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "token_update"
+name = "token_upgrade"
 
 [features]
 no-entrypoint = []
@@ -16,4 +16,9 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = "0.28.0"
+anchor-lang = "0.29.0"
+anchor-spl = "0.29.0"
+solana-program = "1.17.6"
+spl-token = "4.0.0"
+spl-token-upgrade = "0.1.0"
+spl-token-2022 = { version = "1.0", features = ["no-entrypoint"] }

@@ -2,7 +2,7 @@
 seeds = false
 skip-lint = false
 [programs.localnet]
-token_update = "7oTo4ZQQwPSpErvAEw75bPWMbRULiBfEFeeA69i6dU8w"
+token_upgrade = "7oTo4ZQQwPSpErvAEw75bPWMbRULiBfEFeeA69i6dU8w"
 
 [registry]
 url = "https://api.apr.dev"
