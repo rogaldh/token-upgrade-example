@@ -4,42 +4,47 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-dependencies:
-  '@coral-xyz/anchor':
-    specifier: ^0.28.0
-    version: 0.28.0
-  '@solana/spl-token':
-    specifier: ^0.3.11
-    version: 0.3.11(@solana/web3.js@1.89.0)(fastestsmallesttextencoderdecoder@1.0.22)
+importers:
 
-devDependencies:
-  '@types/bn.js':
-    specifier: ^5.1.0
-    version: 5.1.5
-  '@types/chai':
-    specifier: ^4.3.0
-    version: 4.3.11
-  '@types/mocha':
-    specifier: ^9.0.0
-    version: 9.1.1
-  chai:
-    specifier: ^4.3.4
-    version: 4.4.0
-  debug:
-    specifier: ^4.3.4
-    version: 4.3.4
-  mocha:
-    specifier: ^9.0.3
-    version: 9.2.2
-  prettier:
-    specifier: ^2.6.2
-    version: 2.8.8
-  ts-mocha:
-    specifier: ^10.0.0
-    version: 10.0.0(mocha@9.2.2)
-  typescript:
-    specifier: ^4.3.5
-    version: 4.9.5
+  .:
+    dependencies:
+      '@coral-xyz/anchor':
+        specifier: ^0.28.0
+        version: 0.28.0
+      '@solana/spl-token':
+        specifier: ^0.3.11
+        version: 0.3.11(@solana/web3.js@1.89.0)(fastestsmallesttextencoderdecoder@1.0.22)
+      bn.js:
+        specifier: ^5.2.1
+        version: 5.2.1
+    devDependencies:
+      '@types/bn.js':
+        specifier: ^5.1.0
+        version: 5.1.5
+      '@types/chai':
+        specifier: ^4.3.0
+        version: 4.3.11
+      '@types/mocha':
+        specifier: ^9.0.0
+        version: 9.1.1
+      chai:
+        specifier: ^4.3.4
+        version: 4.4.0
+      debug:
+        specifier: ^4.3.4
+        version: 4.3.4
+      mocha:
+        specifier: ^9.0.3
+        version: 9.2.2
+      prettier:
+        specifier: ^2.6.2
+        version: 2.8.8
+      ts-mocha:
+        specifier: ^10.0.0
+        version: 10.0.0(mocha@9.2.2)
+      typescript:
+        specifier: ^4.3.5
+        version: 4.9.5
 
 packages:
 
