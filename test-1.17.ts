@@ -6,11 +6,9 @@ import BN from "bn.js";
 import Debug from "debug";
 import { struct, u8 } from "@solana/buffer-layout";
 import { Program } from "@coral-xyz/anchor";
-import { TokenUpgrade } from "../target/types/token_upgrade";
 import fs from "node:fs";
 import path from "node:path";
 import childProcess from "node:child_process";
-import * as util from "./util";
 const log = Debug("log:token-update");
 
 const URL = process.env.ENVIRON || "localhost";
@@ -77,13 +75,21 @@ function spawnSubcommandSync(command: string, args: string[]) {
 
 describe("token-upgrade program", () => {
   // Configure the client to use the local cluster.
-  const provider = anchor.AnchorProvider.env();
-  anchor.setProvider(provider);
+  //const provider = anchor.AnchorProvider.env();
+  //anchor.setProvider(provider);
 
-  const program = anchor.workspace.TokenUpgrade as Program<TokenUpgrade>;
+  //const program = anchor.workspace.TokenUpgrade as Program<TokenUpgrade>;
 
-  const connection = provider.connection;
-  const wallet = provider.wallet as anchor.Wallet;
+
+  //const connection = provider.connection;
+  const connection = new web3.Connection("http://127.0.0.1:8899", "confirmed");
+  //const wallet = provider.wallet as anchor.Wallet;
+  const payer = web3.Keypair.generate();
+  const wallet = {
+    payer: payer,
+    publicKey: payer.publicKey,
+  }
+
 
   const oldMintKeypair = readJSONSync(
     "./.keys/o1dcYPVSbt1XzMJo1fiYJmxsmFNxt3GK8aPz8CmvqpM.json"
@@ -104,6 +110,16 @@ describe("token-upgrade program", () => {
 
   describe("when executing transfer", () => {
     it("should perform successfully", async () => {
+      let balance = await connection.getBalance(wallet.publicKey);
+      log(`Balance: ${balance}`);
+
+      const sig = await connection.requestAirdrop(wallet.publicKey, web3.LAMPORTS_PER_SOL);
+      await connection.confirmTransaction(sig);
+
+      balance = await connection.getBalance(wallet.publicKey);
+      log(`Balance: ${balance}`);
+
+
       log("Creating old mint...");
       const oldToken = await spl.createMint(
         connection,
@@ -185,16 +201,31 @@ describe("token-upgrade program", () => {
       const DECIMALS = 8;
 
       log("Transfering old tokens to the holder");
-      await spl.transferChecked(
-        connection,
+      const transferCheckedTx = new web3.Transaction().add(
+        spl.createTransferCheckedInstruction(
+          oldATA,
+          oldToken,
+          holderTokenATA.address,
+          wallet.publicKey,
+          AMOUNT_TO_UPGRADE,
+          DECIMALS
+      ));
+      transferCheckedTx.recentBlockhash = await (await connection.getRecentBlockhash()).blockhash
+      transferCheckedTx.feePayer = wallet.payer.publicKey;
+
+      await web3.sendAndConfirmTransaction(connection, transferCheckedTx, [
         wallet.payer,
-        oldATA,
-        oldToken,
-        holderTokenATA.address,
-        wallet.publicKey,
-        AMOUNT_TO_UPGRADE,
-        DECIMALS
-      );
+      ]);
+      //await spl.transferChecked(
+        //connection,
+        //wallet.payer,
+        //oldATA,
+        //oldToken,
+        //holderTokenATA.address,
+        //wallet.publicKey,
+        //AMOUNT_TO_UPGRADE,
+        //DECIMALS
+      //);
       const holderAccountInfo = await spl.getAccount(
         connection,
         holderTokenATA.address
