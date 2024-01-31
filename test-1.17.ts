@@ -96,6 +96,10 @@ describe("token-upgrade program", () => {
     publicKey: payer.publicKey,
   };
 
+  const holderKeypairFilename = "./.keys/h1dry4DqG4U45iN5Nfs6YrqHY82H4P1nBu3VKFQ9cty.json";
+  const holderKeypair = web3.Keypair.fromSecretKey(readAsUInt8(readJSONSync(holderKeypairFilename)));
+  const holder = holderKeypair.publicKey;
+
   const oldMintKeypair = readJSONSync(
     "./.keys/o1dcYPVSbt1XzMJo1fiYJmxsmFNxt3GK8aPz8CmvqpM.json"
   );
@@ -216,7 +220,7 @@ describe("token-upgrade program", () => {
           newToken,
           escrowKeypair.publicKey,
           wallet.publicKey,
-          100,
+          100e8,
           undefined,
           spl.TOKEN_2022_PROGRAM_ID
         )
@@ -225,17 +229,12 @@ describe("token-upgrade program", () => {
         await connection.getRecentBlockhash()
       ).blockhash;
       mintNewToEscrowTx.feePayer = wallet.publicKey;
-
-      const a = await connection.simulateTransaction(mintNewToEscrowTx, [
+      await connection.simulateTransaction(mintNewToEscrowTx, [
         wallet.payer,
       ]);
-
-      console.log({ a }, a.value.logs);
-
-      await web3.sendAndConfirmTransaction(connection, mintNewToEscrowTx, [
+      const b = await web3.sendAndConfirmTransaction(connection, mintNewToEscrowTx, [
         wallet.payer,
       ]);
-
       //await spl.mintTo(
       //connection,
       //wallet.payer,
@@ -261,15 +260,18 @@ describe("token-upgrade program", () => {
       //undefined,
       //spl.TOKEN_2022_PROGRAM_ID
       //);
+      log(`Minted successfully: ${b}`);
       const escrowAccountInfo = await spl.getAccount(
         connection,
-        escrowKeypair.publicKey
+        escrowKeypair.publicKey,
+        undefined,
+        spl.TOKEN_2022_PROGRAM_ID,
       );
       log(`New token was minted. Amount: ${escrowAccountInfo.amount}`);
 
       log("Creating mint recipient");
-      const user = web3.Keypair.generate();
-      const holder = user.publicKey;
+      //const user = web3.Keypair.generate();
+      //const holder = user.publicKey;
       log(`Holder created: ${holder}`);
       const holderTokenATA = await spl.getOrCreateAssociatedTokenAccount(
         connection,
@@ -342,54 +344,55 @@ describe("token-upgrade program", () => {
       );
       log(`Holder has the ${holderAccountInfo.amount} of ${oldToken} tokens`);
 
-      const delegateAccount = new web3.PublicKey(
-        "Fnq5ZpKGJ2AveXEx2VPJCT3357VLLsCe86jASjpmdVKF"
-      ); //escrowKeypair.publicKey;
+      //const delegateAccount = new web3.PublicKey(
+        //"Fnq5ZpKGJ2AveXEx2VPJCT3357VLLsCe86jASjpmdVKF"
+      //); //escrowKeypair.publicKey;
 
-      /*new web3.PublicKey(
-          "8FtJENBd9DssjCctLMch5kQaLLoaYDaoPZej5ZzEXZLb"
-        ) */
-      /*holder*/
+      //[>new web3.PublicKey(
+          //"8FtJENBd9DssjCctLMch5kQaLLoaYDaoPZej5ZzEXZLb"
+        //) */
+      //[>holder<]
 
-      console.log("Delegate oldToken to the escrow...");
-      const approveInstruction = spl.createApproveInstruction(
-        holderTokenATA.address,
-        delegateAccount,
-        holder,
-        AMOUNT_TO_UPGRADE
-      );
+      //log("Delegate oldToken to the escrow...");
+      //const approveInstruction = spl.createApproveInstruction(
+        //holderTokenATA.address,
+        //delegateAccount,
+        //holder,
+        //AMOUNT_TO_UPGRADE
+      //);
 
-      const approveTx = new web3.Transaction().add(approveInstruction);
-      approveTx.recentBlockhash = await (
-        await connection.getRecentBlockhash()
-      ).blockhash;
-      approveTx.feePayer = wallet.payer.publicKey;
+      //const approveTx = new web3.Transaction().add(approveInstruction);
+      //approveTx.recentBlockhash = await (
+        //await connection.getRecentBlockhash()
+      //).blockhash;
+      //approveTx.feePayer = wallet.payer.publicKey;
 
-      await web3.sendAndConfirmTransaction(connection, approveTx, [
-        wallet.payer,
-        user,
-      ]);
+      //await web3.sendAndConfirmTransaction(connection, approveTx, [
+        //wallet.payer,
+        //user,
+      //]);
 
-      const accountWithDelegation = await spl.getAccount(
-        connection,
-        holderTokenATA.address
-      );
-      log(
-        `Delegated ${accountWithDelegation.delegatedAmount} of ${oldToken} tokens to ${accountWithDelegation.delegate}`
-      );
+      //const accountWithDelegation = await spl.getAccount(
+        //connection,
+        //holderTokenATA.address
+      //);
+      //log(
+        //`Delegated ${accountWithDelegation.delegatedAmount} of ${oldToken} tokens to ${accountWithDelegation.delegate}`
+      //);
 
       balance = await connection.getBalance(wallet.publicKey);
       log(`Balance: ${balance}`);
 
-      return;
       log("Exchanging old tokens for the new ones...");
-      const exchangeCommand = `../solana-program-library/target/debug/spl-token-upgrade -u ${URL} exchange ${oldKeypair.publicKey} ${newKeypair.publicKey} --escrow ${escrowKeypair.publicKey}`; // --burn-from ${holderTokenATA.address} --destination ${holderNewTokenATA.address} --owner ${payerKeypairFilename} --payer ${payerKeypairFilename}`;
+      const exchangeCommand = `../solana-program-library/target/debug/spl-token-upgrade -u ${URL} exchange ${oldKeypair.publicKey} ${newKeypair.publicKey} --escrow ${escrowKeypair.publicKey} --owner ${holderKeypairFilename} --payer ${payerKeypairFilename}`; // --burn-from ${holderTokenATA.address} --destination ${holderNewTokenATA.address} --owner ${payerKeypairFilename} --payer ${payerKeypairFilename}`;
       log(`Executing command: ${exchangeCommand}`);
       spawnSubcommandSync(exchangeCommand, []);
 
       const newAccount = await spl.getAccount(
         connection,
-        holderNewTokenATA.address
+        holderNewTokenATA.address,
+        undefined,
+        spl.TOKEN_2022_PROGRAM_ID
       );
 
       console.log("|>", newAccount);
