@@ -13,6 +13,10 @@ const log = Debug("log:token-update");
 
 const URL = process.env.ENVIRON || "localhost";
 
+const TOKEN_UPGRADE_PROGRAM_ID = new web3.PublicKey(
+  "GHscxHuEzVwEiEqu2WQ9FLww72hQzYxhVp3i2ncJJp5"
+);
+
 const cli = "../solana-program-library/target/debug/spl-token-upgrade";
 
 function readJSONSync(pathToFile: string) {
@@ -65,7 +69,7 @@ async function sendAndConfirmTransaction(
   return sig;
 }
 
-const upgradeTokenInstructionData = struct([]);
+const upgradeTokenInstructionData = 1; //struct([1]);
 
 function addSigners(keys, ownerOrAuthority, multiSigners) {
   if (multiSigners.length) {
@@ -86,17 +90,37 @@ function addSigners(keys, ownerOrAuthority, multiSigners) {
 function upgradeTokenInstruction(
   originalAccount: web3.PublicKey,
   originalMint: web3.PublicKey,
-  owner,
-  multiSigners: (web3.Signer | web3.PublicKey)[] = [],
-  programId = spl.TOKEN_PROGRAM_ID
+  newEscrow: web3.PublicKey,
+  newAccount: web3.PublicKey,
+  newMint: web3.PublicKey,
+  originalTransferAuthority: web3.PublicKey,
+  originalMultisigSigners: (web3.Signer | web3.PublicKey)[] = [],
+  programId: web3.PublicKey = TOKEN_UPGRADE_PROGRAM_ID,
+  originalTokenProgramId = spl.TOKEN_PROGRAM_ID,
+  newTokenProgramId = spl.TOKEN_2022_PROGRAM_ID
 ) {
-  const keys = addSigners(
-    [{ pubkey: 1, isSigner: false, isWritable: true }],
-    owner,
-    multiSigners
+  const [escrowAuthority] = web3.PublicKey.findProgramAddressSync(
+    [
+      Buffer.from("token-escrow-authority"),
+      originalMint.toBuffer(),
+      newMint.toBuffer(),
+    ],
+    programId
   );
 
-  const data = Buffer.alloc(upgradeTokenInstructionData.span);
+  let keys = [
+    { pubkey: originalAccount, isSigner: false, isWritable: true },
+    { pubkey: originalMint, isSigner: false, isWritable: true },
+    { pubkey: newEscrow, isSigner: false, isWritable: true },
+    { pubkey: newAccount, isSigner: false, isWritable: true },
+    { pubkey: newMint, isSigner: false, isWritable: true },
+    { pubkey: escrowAuthority, isSigner: false, isWritable: false },
+    { pubkey: originalTokenProgramId, isSigner: false, isWritable: false },
+    { pubkey: newTokenProgramId, isSigner: false, isWritable: false },
+  ];
+  keys = addSigners(keys, originalTransferAuthority, originalMultisigSigners);
+
+  const data = Buffer.alloc(upgradeTokenInstructionData /*.span*/);
 
   return new web3.TransactionInstruction({ keys, programId, data });
 }
@@ -312,6 +336,17 @@ describe("token-upgrade program", () => {
       log(`Anciliary account: ${anciliaryAccountKeypair.publicKey}`);
       // END
 
+      const [holderNewTokenATA1] = web3.PublicKey.findProgramAddressSync(
+        [
+          holder.toBuffer(),
+          spl.TOKEN_2022_PROGRAM_ID.toBuffer(),
+          newToken.toBuffer(),
+        ],
+        spl.ASSOCIATED_TOKEN_PROGRAM_ID
+      );
+
+      log(`Holder newToken ATA: ${holderNewTokenATA1}`);
+
       // Exchanging tokens
       const mintAccountRentExtemption =
         await spl.getMinimumBalanceForRentExemptAccount(connection);
@@ -334,7 +369,23 @@ describe("token-upgrade program", () => {
           anciliaryAccountKeypair.publicKey,
           holder,
           (AMOUNT_TO_TRANSFER / 2) * Math.pow(10, SOURCE_TOKEN_DECIMALS)
+        ),
+        spl.createAssociatedTokenAccountIdempotentInstruction(
+          holder,
+          holderNewTokenATA1,
+          holder,
+          newToken,
+          spl.TOKEN_2022_PROGRAM_ID
+        ),
+        upgradeTokenInstruction(
+          anciliaryAccountKeypair.publicKey, // tokenaccount should be here
+          oldToken,
+          escrowKeypair.publicKey,
+          holderNewTokenATA1,
+          newToken,
+          holder
         )
+        // close anciliary token account
       );
       const sig = await sendAndConfirmTransaction(
         connection,
